@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Business Card - Hangman</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .business-card {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+            box-sizing: border-box;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+        }
+        
+        .name {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0;
+            color: #333;
+        }
+        
+        .title {
+            font-size: 16px;
+            color: #666;
+            margin: 5px 0 0;
+        }
+        
+        .game-container {
+            margin-top: 20px;
+        }
+        
+        .hangman-display {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        
+        .hangman-drawing {
+            width: 150px;
+            height: 150px;
+            border: 1px solid #ddd;
+            margin-right: 20px;
+        }
+        
+        .game-info {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .word-display {
+            font-size: 24px;
+            letter-spacing: 5px;
+            margin-bottom: 15px;
+            min-height: 30px;
+            text-align: center;
+        }
+        
+        .keyboard {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 5px;
+            margin-top: 20px;
+        }
+        
+        .key {
+            width: 35px;
+            height: 35px;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        
+        .key:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .key.used {
+            background-color: #ccc;
+            color: #999;
+            cursor: not-allowed;
+        }
+        
+        .key.correct {
+            background-color: #c8e6c9;
+            color: #2e7d32;
+        }
+        
+        .key.wrong {
+            background-color: #ffcdd2;
+            color: #c62828;
+        }
+        
+        .game-status {
+            text-align: center;
+            margin-top: 20px;
+            font-weight: bold;
+            min-height: 24px;
+        }
+        
+        .reset-button {
+            display: block;
+            margin: 20px auto 0;
+            padding: 10px 20px;
+            background-color: #4a6fa5;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+        
+        .reset-button:hover {
+            background-color: #3a5a80;
+        }
+        
+        .contact-info {
+            margin-top: 20px;
+            text-align: center;
+            color: #666;
+        }
+        
+        .hint {
+            margin-top: 10px;
+            text-align: center;
+            font-style: italic;
+            color: #888;
+        }
+        
+        @media (max-width: 500px) {
+            .hangman-display {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .hangman-drawing {
+                margin-right: 0;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="business-card">
+        <div class="header">
+            <h1 class="name">Jan Novák</h1>
+            <p class="title">Web Developer</p>
+        </div>
+        
+        <div class="game-container">
+            <h2 style="text-align: center;">Guess My Email</h2>
+            <p class="hint">Play hangman to reveal my email address</p>
+            
+            <div class="hangman-display">
+                <canvas class="hangman-drawing" id="hangmanCanvas" width="150" height="150"></canvas>
+                <div class="game-info">
+                    <div class="word-display" id="wordDisplay"></div>
+                    <p style="text-align: center;">Wrong guesses: <span id="wrongGuesses">0</span>/6</p>
+                </div>
+            </div>
+            
+            <div class="keyboard" id="keyboard"></div>
+            
+            <div class="game-status" id="gameStatus"></div>
+            
+            <button class="reset-button" id="resetButton">New Game</button>
+        </div>
+        
+        <div class="contact-info">
+            <p>Phone: +420 123 456 789</p>
+            <p>Location: Prague, Czech Republic</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Game configuration
+            const emailToGuess = "robloxguy@outlook.com";
+            let guessedLetters = [];
+            let wrongGuesses = 0;
+            const maxWrongGuesses = 6;
+            let gameOver = false;
+            
+            // DOM elements
+            const wordDisplay = document.getElementById('wordDisplay');
+            const wrongGuessesElement = document.getElementById('wrongGuesses');
+            const gameStatusElement = document.getElementById('gameStatus');
+            const keyboardElement = document.getElementById('keyboard');
+            const resetButton = document.getElementById('resetButton');
+            const canvas = document.getElementById('hangmanCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Initialize the game
+            function initGame() {
+                guessedLetters = [];
+                wrongGuesses = 0;
+                gameOver = false;
+                
+                // Update display
+                updateWordDisplay();
+                wrongGuessesElement.textContent = wrongGuesses;
+                gameStatusElement.textContent = '';
+                
+                // Create keyboard
+                createKeyboard();
+                
+                // Clear and initialize hangman drawing
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawGallows();
+            }
+            
+            // Create keyboard with all letters and special characters in email
+            function createKeyboard() {
+                keyboardElement.innerHTML = '';
+                
+                // Create keys for letters A-Z
+                for (let i = 65; i <= 90; i++) {
+                    const letter = String.fromCharCode(i).toLowerCase();
+                    createKey(letter);
+                }
+                
+                // Add special characters that might be in emails
+                const specialChars = ['@', '.', '_', '-'];
+                specialChars.forEach(char => createKey(char));
+            }
+            
+            // Create a single keyboard key
+            function createKey(letter) {
+                const key = document.createElement('div');
+                key.className = 'key';
+                key.textContent = letter;
+                key.addEventListener('click', function() {
+                    handleGuess(letter);
+                });
+                keyboardElement.appendChild(key);
+            }
+            
+            // Handle letter guess
+            function handleGuess(letter) {
+                if (gameOver || guessedLetters.includes(letter)) {
+                    return;
+                }
+                
+                guessedLetters.push(letter);
+                
+                // Update key appearance
+                const keyElements = document.querySelectorAll('.key');
+                keyElements.forEach(keyElement => {
+                    if (keyElement.textContent === letter) {
+                        keyElement.classList.add('used');
+                        
+                        if (emailToGuess.toLowerCase().includes(letter)) {
+                            keyElement.classList.add('correct');
+                        } else {
+                            keyElement.classList.add('wrong');
+                            wrongGuesses++;
+                            wrongGuessesElement.textContent = wrongGuesses;
+                            drawHangman(wrongGuesses);
+                        }
+                    }
+                });
+                
+                // Update word display
+                updateWordDisplay();
+                
+                // Check game status
+                checkGameStatus();
+            }
+            
+            // Update the display of the word with guessed letters
+            function updateWordDisplay() {
+                let display = '';
+                const lowerCaseEmail = emailToGuess.toLowerCase();
+                
+                for (const char of emailToGuess) {
+                    if (char === ' ') {
+                        display += ' ';
+                    } else if (guessedLetters.includes(char.toLowerCase())) {
+                        display += char;
+                    } else {
+                        display += '_';
+                    }
+                    
+                    // Add space between characters for better readability
+                    display += ' ';
+                }
+                
+                wordDisplay.textContent = display;
+            }
+            
+            // Check if the game is won or lost
+            function checkGameStatus() {
+                const lowerCaseEmail = emailToGuess.toLowerCase();
+                
+                // Check if all letters are guessed
+                const allLettersGuessed = [...lowerCaseEmail].every(char => 
+                    char === ' ' || guessedLetters.includes(char)
+                );
+                
+                if (allLettersGuessed) {
+                    gameStatusElement.textContent = 'You won! Email revealed!';
+                    gameStatusElement.style.color = '#2e7d32';
+                    gameOver = true;
+                } else if (wrongGuesses >= maxWrongGuesses) {
+                    gameStatusElement.textContent = 'Game over! The email was: ' + emailToGuess;
+                    gameStatusElement.style.color = '#c62828';
+                    gameOver = true;
+                    
+                    // Reveal the full email
+                    wordDisplay.textContent = emailToGuess;
+                }
+            }
+            
+            // Draw the gallows
+            function drawGallows() {
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                
+                // Base
+                ctx.beginPath();
+                ctx.moveTo(30, 130);
+                ctx.lineTo(120, 130);
+                ctx.stroke();
+                
+                // Pole
+                ctx.beginPath();
+                ctx.moveTo(50, 130);
+                ctx.lineTo(50, 20);
+                ctx.stroke();
+                
+                // Top
+                ctx.beginPath();
+                ctx.moveTo(50, 20);
+                ctx.lineTo(100, 20);
+                ctx.stroke();
+                
+                // Rope
+                ctx.beginPath();
+                ctx.moveTo(100, 20);
+                ctx.lineTo(100, 30);
+                ctx.stroke();
+            }
+            
+            // Draw the hangman based on wrong guesses
+            function drawHangman(wrongGuesses) {
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                ctx.fillStyle = '#333';
+                
+                switch(wrongGuesses) {
+                    case 1: // Head
+                        ctx.beginPath();
+                        ctx.arc(100, 40, 10, 0, Math.PI * 2);
+                        ctx.stroke();
+                        break;
+                    case 2: // Body
+                        ctx.beginPath();
+                        ctx.moveTo(100, 50);
+                        ctx.lineTo(100, 90);
+                        ctx.stroke();
+                        break;
+                    case 3: // Left arm
+                        ctx.beginPath();
+                        ctx.moveTo(100, 60);
+                        ctx.lineTo(80, 70);
+                        ctx.stroke();
+                        break;
+                    case 4: // Right arm
+                        ctx.beginPath();
+                        ctx.moveTo(100, 60);
+                        ctx.lineTo(120, 70);
+                        ctx.stroke();
+                        break;
+                    case 5: // Left leg
+                        ctx.beginPath();
+                        ctx.moveTo(100, 90);
+                        ctx.lineTo(85, 110);
+                        ctx.stroke();
+                        break;
+                    case 6: // Right leg
+                        ctx.beginPath();
+                        ctx.moveTo(100, 90);
+                        ctx.lineTo(115, 110);
+                        ctx.stroke();
+                        break;
+                }
+            }
+            
+            // Add keyboard support
+            document.addEventListener('keydown', function(event) {
+                if (gameOver) return;
+                
+                const key = event.key.toLowerCase();
+                
+                // Check if the key is a letter or special character we're using
+                if (/^[a-z]$/.test(key) || ['@', '.', '_', '-'].includes(key)) {
+                    handleGuess(key);
+                }
+            });
+            
+            // Reset button event
+            resetButton.addEventListener('click', initGame);
+            
+            // Initialize the game on load
+            initGame();
+        });
+    </script>
+</body>
+</html>
